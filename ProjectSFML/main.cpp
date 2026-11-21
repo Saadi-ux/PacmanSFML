@@ -7,7 +7,6 @@ using namespace sf;
 void loadMaze();
 void drawMaze();
 void movePlayer();
-
 void checkCollisions();
 void saveGame();
 
