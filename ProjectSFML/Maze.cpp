@@ -17,5 +17,5 @@ void loadMaze()
 
 void drawMaze()
 {
-	// Drawing code
+	//  This is Drawing code
 }
