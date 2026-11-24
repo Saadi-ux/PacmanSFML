@@ -10,12 +10,12 @@ const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
 char maze[ROWS][COLS];                 // gloabal
-int prow=0,pcol=0; // Player row and column position
+int prow=0,pcol=0,dir=0; // Player row and column position
 extern char maze[ROWS][COLS];          // defined in Maze.cpp
 bool loadMaze(const char* filename,char maze[ROWS][COLS]);   // defined in Maze.cpp
-void drawMaze(RenderWindow& window,int &prow,int &pcol);   // defined in Maze.cpp
-void readInput(int& pcol, int& prow,char maze[ROWS][COLS]);                      // defined in Player.cpp
-void movePlayer();
+void drawMaze(RenderWindow& window,int &prow,int &pcol,char maze[ROWS][COLS]);   // defined in Maze.cpp
+void readInput(int& dir);                                                      // defined in Player.cpp
+void movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS]);
 void checkCollisions();
 void saveGame();
 
@@ -40,9 +40,10 @@ int main()
 
 		window.clear(Color::Black);
 
-		drawMaze(window, prow, pcol);
+		drawMaze(window, prow, pcol, maze);
 
-		readInput(pcol, prow, maze);
+		readInput(dir);
+		movePlayer(dir, prow, pcol, maze);
 
 		window.display();
 

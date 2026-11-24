@@ -8,7 +8,6 @@ const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
 
-char maze[ROWS][COLS];                 // gloabal
 
 bool loadMaze(const char* filename,char maze[ROWS][COLS])
 {
@@ -29,7 +28,7 @@ bool loadMaze(const char* filename,char maze[ROWS][COLS])
 }
 int Px; 
 int Py;
-void drawMaze(RenderWindow& window, int &prow, int &pcol)
+void drawMaze(RenderWindow& window, int &prow, int &pcol,char maze[ROWS][COLS])
 {
     RectangleShape wallBlock({ TILE, TILE });
     wallBlock.setFillColor(Color(33, 33, 222));

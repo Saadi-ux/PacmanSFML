@@ -14,6 +14,8 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 		return;
 	}
 	CTime = 1;
+	if (dir == 0)
+		return;
 	if(dir==1 && maze[prow-1][pcol]!='#')
 	{
 		maze[prow][pcol] = '-';
@@ -40,22 +42,17 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 	}
 
 }
-void readInput(int& pcol, int& prow,char maze[ROWS][COLS])
+void readInput(int& dir)
 {
-	if (Keyboard::isKeyPressed(Keyboard::Key::W)||Keyboard::isKeyPressed(Keyboard::Key::Up))
-	{
-		movePlayer(1, prow,pcol,maze);
-	}
-	else if (Keyboard::isKeyPressed(Keyboard::Key::S)||Keyboard::isKeyPressed(Keyboard::Key::Down))
-	{
-		movePlayer(2, prow, pcol,maze);
-	}
-	else if (Keyboard::isKeyPressed(Keyboard::Key::A)||Keyboard::isKeyPressed(Keyboard::Key::Left))
-	{
-		movePlayer(3, prow, pcol,maze);
-	}
-	else if (Keyboard::isKeyPressed(Keyboard::Key::D)||Keyboard::isKeyPressed(Keyboard::Key::Right))
-	{
-		movePlayer(4, prow, pcol,maze);
-	}
+	if (Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up))
+		dir = 1;
+
+	else if (Keyboard::isKeyPressed(Keyboard::Key::S) || Keyboard::isKeyPressed(Keyboard::Key::Down))
+		dir = 2;
+
+	else if (Keyboard::isKeyPressed(Keyboard::Key::A) || Keyboard::isKeyPressed(Keyboard::Key::Left))
+		dir = 3;
+
+	else if (Keyboard::isKeyPressed(Keyboard::Key::D) || Keyboard::isKeyPressed(Keyboard::Key::Right))
+		dir = 4;
 }
