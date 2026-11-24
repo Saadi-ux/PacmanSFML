@@ -1,44 +1,52 @@
-#include<iostream>
-#include<fstream>
+#include <iostream>
 #include <SFML/Graphics.hpp>
+#include<SFML/System.hpp>
+#include<SFML/Window.hpp>
+
 using namespace std;
 using namespace sf;
 
-void loadMaze();
-void drawMaze();
+const int ROWS = 40;
+const int COLS = 40;
+const float TILE = 30.f;
+char maze[ROWS][COLS];                 // gloabal
+int prow=0,pcol=0; // Player row and column position
+extern char maze[ROWS][COLS];          // defined in Maze.cpp
+bool loadMaze(const char* filename,char maze[ROWS][COLS]);   // defined in Maze.cpp
+void drawMaze(RenderWindow& window,int &prow,int &pcol);   // defined in Maze.cpp
+void readInput(int& pcol, int& prow,char maze[ROWS][COLS]);                      // defined in Player.cpp
 void movePlayer();
 void checkCollisions();
 void saveGame();
 
+
+
 int main()
 {
-    RenderWindow window(VideoMode({ 570, 680 }), "Pac-Man");
-    window.setFramerateLimit(60); //60fps lock
+	if (!loadMaze("maze.txt", maze)) return 1;
 
-    const float TILE = 30.f; // Tile size
-    
-    RectangleShape wallBlock({ TILE, TILE }); // Wall block
-    wallBlock.setFillColor(Color(33, 33, 222));
-    
-    CircleShape pellet(3.f); // Pellet
-    pellet.setFillColor(Color::White);
+	RenderWindow window(VideoMode({ 570, 680 }), "Pac-Man");
+	window.setFramerateLimit(60);
 
+	while (window.isOpen())
+	{
+		while (const optional event = window.pollEvent())
+		{
+			if (event->is<Event::Closed>())
+				window.close();
+		}
 
-    while (window.isOpen())
-    {
-        while (const optional event = window.pollEvent())
-        {
-            if (event->is<Event::Closed>())
-                window.close();
-        }
-       
-        window.clear(Color::Black);  // Clear the window
+		
 
-       
-        window.display();  // Display everything
+		window.clear(Color::Black);
 
+		drawMaze(window, prow, pcol);
 
-    }
+		readInput(pcol, prow, maze);
 
-    return 0;
+		window.display();
+
+	}
+
+	return 0;
 }
