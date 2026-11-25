@@ -1,8 +1,4 @@
 
-void checkCollisions()
-{
-
-}
 void saveGame()
 {
 

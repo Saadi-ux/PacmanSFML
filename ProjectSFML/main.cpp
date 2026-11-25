@@ -14,9 +14,8 @@ int prow=0,pcol=0,dir=0; // Player row and column position
 extern char maze[ROWS][COLS];          // defined in Maze.cpp
 bool loadMaze(const char* filename,char maze[ROWS][COLS]);   // defined in Maze.cpp
 void drawMaze(RenderWindow& window,int &prow,int &pcol,char maze[ROWS][COLS]);   // defined in Maze.cpp
-void readInput(int& dir);                                                      // defined in Player.cpp
+void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS]);                                                      // defined in Player.cpp
 void movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS]);
-void checkCollisions();
 void saveGame();
 
 
@@ -42,7 +41,7 @@ int main()
 
 		drawMaze(window, prow, pcol, maze);
 
-		readInput(dir);
+		readInput(dir, prow, pcol, maze);
 		movePlayer(dir, prow, pcol, maze);
 
 		window.display();

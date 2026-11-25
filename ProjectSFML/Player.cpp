@@ -7,6 +7,7 @@ const int ROWS = 40;
 const int COLS = 40;
 const int FrameTime = 8;
 int CTime = 1;
+bool isWall(char maze[ROWS][COLS], int r, int c);
 void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 {
 	if (CTime != FrameTime){
@@ -16,25 +17,25 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 	CTime = 1;
 	if (dir == 0)
 		return;
-	if(dir==1 && maze[prow-1][pcol]!='#')
+	if(dir==1 && isWall(maze, prow-1, pcol)!=true)
 	{
 		maze[prow][pcol] = '-';
 		prow--;
 		maze[prow][pcol] = 'P';
 	}
-	if (dir == 2 && maze[prow + 1][pcol] != '#')
+	if (dir == 2 && isWall(maze, prow + 1, pcol)!=true)
 	{
 		maze[prow][pcol] = '-';
 		prow++;
 		maze[prow][pcol] = 'P';
 	}
-	if (dir == 3 && maze[prow][pcol - 1] != '#')
+	if (dir == 3 && isWall(maze, prow, pcol - 1)!=true)
 	{
 		maze[prow][pcol] = '-';
 		pcol--;
 		maze[prow][pcol] = 'P';
 	}
-	if (dir == 4 && maze[prow][pcol + 1] != '#')
+	if (dir == 4 && isWall(maze, prow, pcol + 1)!=true)
 	{
 		maze[prow][pcol] = '-';
 		pcol++;
@@ -42,17 +43,14 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 	}
 
 }
-void readInput(int& dir)
+void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS])
 {
-	if (Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up))
+	if ((Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up)) && !isWall(maze, prow - 1, pcol))
 		dir = 1;
-
-	else if (Keyboard::isKeyPressed(Keyboard::Key::S) || Keyboard::isKeyPressed(Keyboard::Key::Down))
+	else if ((Keyboard::isKeyPressed(Keyboard::Key::S) || Keyboard::isKeyPressed(Keyboard::Key::Down)) && !isWall(maze, prow + 1, pcol))
 		dir = 2;
-
-	else if (Keyboard::isKeyPressed(Keyboard::Key::A) || Keyboard::isKeyPressed(Keyboard::Key::Left))
+	else if ((Keyboard::isKeyPressed(Keyboard::Key::A) || Keyboard::isKeyPressed(Keyboard::Key::Left)) && !isWall(maze, prow, pcol - 1))
 		dir = 3;
-
-	else if (Keyboard::isKeyPressed(Keyboard::Key::D) || Keyboard::isKeyPressed(Keyboard::Key::Right))
+	else if ((Keyboard::isKeyPressed(Keyboard::Key::D) || Keyboard::isKeyPressed(Keyboard::Key::Right)) && !isWall(maze, prow, pcol + 1))
 		dir = 4;
 }
