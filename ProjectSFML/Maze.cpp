@@ -7,8 +7,16 @@ using namespace sf;
 const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
+const int NUM_GHOSTS = 4;
+bool showBlue(int i);
+
 int Px;
 int Py;
+int ghostRow[NUM_GHOSTS];
+int ghostCol[NUM_GHOSTS];
+int ghostDir[NUM_GHOSTS];
+int ghostStartRow[NUM_GHOSTS];
+int ghostStartCol[NUM_GHOSTS];
 
 bool loadMaze(const char* filename, char maze[ROWS][COLS])
 {
@@ -32,20 +40,43 @@ bool isWall(char maze[ROWS][COLS], int r, int c)
 {
 	if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return true;
 	return maze[r][c] == '#';
-} // Anything outside the maze counts as wall, so the window edge gets no line
+}
+
+void initGhosts(char maze[ROWS][COLS])
+{
+	for (int i = 0; i < NUM_GHOSTS; i++)
+	{
+		ghostRow[i] = ghostCol[i] = -1;
+		ghostStartRow[i] = ghostStartCol[i] = -1;
+		ghostDir[i] = 0;
+	}
+
+	int n = 0;
+	for (int r = 0; r < ROWS; r++)
+	{
+		for (int c = 0; c < COLS; c++)
+		{
+			if (maze[r][c] == 'G' && n < NUM_GHOSTS)
+			{
+				ghostStartRow[n] = ghostRow[n] = r;
+				ghostStartCol[n] = ghostCol[n] = c;
+				maze[r][c] = '-';
+				n++;
+			}
+		}
+	}
+}
 
 void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 {
-	const float T = 3.f;                          // border thickness
+	const float T = 3.f;
 	RectangleShape fill({ TILE, TILE });
 	fill.setFillColor(Color(22, 32, 90));
 
-	RectangleShape horizontal({ TILE + T, T });   // T longer so corners join
+	RectangleShape horizontal({ TILE + T, T });
 	RectangleShape vertical({ T, TILE + T });
 	horizontal.setFillColor(Color(66, 110, 255));
 	vertical.setFillColor(Color(66, 110, 255));
-
-	// fills first, so they never cover a border
 
 	for (int r = 0; r < ROWS; r++)
 		for (int c = 0; c < COLS; c++)
@@ -55,7 +86,6 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 				window.draw(fill);
 			}
 
-	// border only on sides that face a non-wall
 	for (int r = 0; r < ROWS; r++)
 	{
 		for (int c = 0; c < COLS; c++)
@@ -74,17 +104,24 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 
 void drawMaze(RenderWindow& window, int& prow, int& pcol, char maze[ROWS][COLS])
 {
+	drawWalls(window, maze);
 
-	drawWalls(window,maze);
-
-	CircleShape pellet(3.f);
+	CircleShape pellet(2.5);
 	pellet.setFillColor(Color::White);
 
 	CircleShape powerPellet(8.f);
-	powerPellet.setFillColor(Color::Yellow);
+	powerPellet.setFillColor(Color::White);
 
 	CircleShape player(9.f);
-	player.setFillColor(Color::Blue);
+	player.setFillColor(Color::Yellow);
+
+	CircleShape ghost(9.f);
+	const Color ghostColors[NUM_GHOSTS] = {
+		Color::Red,
+		Color::Cyan,
+		Color(255, 192, 203),
+		Color(255, 165, 0)
+	};
 
 	float Newx, Newy;
 
@@ -97,7 +134,7 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, char maze[ROWS][COLS])
 
 			if (maze[r][c] == '.')
 			{
-				pellet.setPosition({ Newx + TILE / 2 - 3.f, Newy + TILE / 2 - 3.f });
+				pellet.setPosition({ Newx + TILE / 2 - 2.5f, Newy + TILE / 2 - 2.5f });
 				window.draw(pellet);
 			}
 			else if (maze[r][c] == 'o')
@@ -105,18 +142,26 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, char maze[ROWS][COLS])
 				powerPellet.setPosition({ Newx + TILE / 2 - 8.f, Newy + TILE / 2 - 8.f });
 				window.draw(powerPellet);
 			}
-			if (maze[r][c] == 'P')
+			else if (maze[r][c] == 'P')
 			{
 				Px = c * TILE + TILE / 2;
 				Py = r * TILE + TILE / 2;
-				maze[r][c] = '-'; // Clear the initialplayer position drawing
+				maze[r][c] = '-';
 				prow = r;
 				pcol = c;
 			}
-
 		}
-
 	}
-	player.setPosition({ Px - 10.f, Py - 10.f });
+
+	for (int i = 0; i < NUM_GHOSTS; i++)
+	{
+		if (ghostRow[i] < 0) continue;
+		ghost.setFillColor(showBlue(i) ? Color(100, 100, 255) : ghostColors[i]);
+		ghost.setPosition({ ghostCol[i] * TILE + TILE / 2 - 9.f,
+							ghostRow[i] * TILE + TILE / 2 - 9.f });
+		window.draw(ghost);
+	}
+
+	player.setPosition({ Px - 9.f, Py - 9.f });
 	window.draw(player);
 }
