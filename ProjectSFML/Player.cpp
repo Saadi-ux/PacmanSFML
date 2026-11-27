@@ -37,8 +37,9 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 		maze[prow][pcol] = '-';
 		pcol++;
 	}
-
+	maze[prow][pcol] = '-';
 }
+
 void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS])
 {
 	if ((Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up)) && !isWall(maze, prow - 1, pcol))

@@ -8,6 +8,7 @@ const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
 const int NUM_GHOSTS = 4;
+const float HUD_H = 50.f;
 bool showBlue(int i);
 
 int Px;
@@ -80,7 +81,6 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROW
 	drawPellets(window, maze);
 	findPlayer(prow, pcol, maze);
 
-	CircleShape ghost(9.f);
 	const Color ghostColors[NUM_GHOSTS] = {
 		Color::Red,
 		Color::Cyan,
@@ -92,7 +92,7 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROW
 	{
 		if (ghostRow[i] < 0) continue;
 		float gx = ghostCol[i] * TILE + TILE / 2;
-		float gy = ghostRow[i] * TILE + TILE / 2;
+		float gy = ghostRow[i] * TILE + HUD_H + TILE / 2;
 		drawGhost(window, gx, gy, ghostColors[i], showBlue(i), ghostDir[i]);
 	}
 

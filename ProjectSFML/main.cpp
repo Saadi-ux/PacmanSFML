@@ -11,6 +11,7 @@ using namespace sf;
 const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
+const float HUD_H = 50.f;
 
 char maze[ROWS][COLS];
 int prow = 0, pcol = 0, dir = 0;
@@ -23,11 +24,12 @@ bool loadMaze(const char* filename, char maze[ROWS][COLS]);
 void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROWS][COLS]);
 void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS]);
 void movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS]);
-void saveGame();
+void saveGame(char maze[ROWS][COLS]);
 void initGhosts(char maze[ROWS][COLS]);
 void initGhostState();
 bool updateGhosts(char maze[ROWS][COLS], int prow, int pcol, int oldPRow, int oldPCol, int& score, int& lives);
 void frightenGhosts();
+void drawHUD(RenderWindow& window, const Font& font, int score, int lives);
 
 int main()
 {
@@ -39,6 +41,13 @@ int main()
 
 	RenderWindow window(VideoMode({ 570, 680 }), "Pac-Man");
 	window.setFramerateLimit(60);
+
+	Font font;
+	if (!font.openFromFile("arial.ttf") && !font.openFromFile("C:/Windows/Fonts/arial.ttf"))
+	{
+		cout << "Could not load a font (put arial.ttf next to maze.txt)" << endl;
+		return 1;
+	}
 
 	int startRow = -1, startCol = -1;
 
@@ -53,6 +62,7 @@ int main()
 		window.clear(Color::Black);
 
 		drawMaze(window, prow, pcol, dir, maze);
+		drawHUD(window, font, score, lives);
 
 		if (startRow < 0)
 		{

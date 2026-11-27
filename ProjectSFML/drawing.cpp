@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <cmath>
+#include <string>
 #include <SFML/Graphics.hpp>
 using namespace std;
 using namespace sf;
@@ -7,7 +9,12 @@ using namespace sf;
 const int ROWS = 40;
 const int COLS = 40;
 const float TILE = 30.f;
+const float HUD_H = 50.f;          // height of the HUD strip at the top
 const int NUM_GHOSTS = 4;
+extern bool ghostBlue[NUM_GHOSTS];   // defined in Ghost.cpp: true while a ghost is frightened
+
+int catDrawX = 0, catDrawY = 0;      // where the cat is drawn right now (set in drawPlayer)
+const int SLIDE_STEP = 8;          // pixels the drawn picture moves every 2 frames
 
 bool isWall(char maze[ROWS][COLS], int r, int c)
 {
@@ -30,7 +37,7 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 		for (int c = 0; c < COLS; c++)
 			if (maze[r][c] == '#')
 			{
-				fill.setPosition({ c * TILE, r * TILE });
+				fill.setPosition({ c * TILE, r * TILE + HUD_H });
 				window.draw(fill);
 			}
 
@@ -40,7 +47,7 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 		{
 			if (maze[r][c] != '#') continue;
 			float x = c * TILE;
-			float y = r * TILE;
+			float y = r * TILE + HUD_H;
 
 			if (!isWall(maze, r - 1, c)) { horizontal.setPosition({ x - T / 2, y - T / 2 });        window.draw(horizontal); }
 			if (!isWall(maze, r + 1, c)) { horizontal.setPosition({ x - T / 2, y + TILE - T / 2 }); window.draw(horizontal); }
@@ -50,11 +57,44 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 	}
 }
 
+// Visual smoothing only: the game logic still moves whole cells.
+// Moves the drawn position (in pixels) toward the target, at most "step" pixels per call.
+// moveNow is true on every 2nd frame. A target that is far away (first frame,
+// respawn, ghost sent home) is jumped to instead of slid to.
+void slideToward(int& drawX, int& drawY, int targetX, int targetY, bool moveNow, int step)
+{
+	int dx = targetX - drawX;            // how far the picture still has to go
+	int dy = targetY - drawY;
+	if (dx > 45 || dx < -45 || dy > 45 || dy < -45)
+	{
+		drawX = targetX;
+		drawY = targetY;
+		return;
+	}
+	if (!moveNow)
+		return;
+	if (dx > step) dx = step;
+	if (dx < -step) dx = -step;
+	if (dy > step) dy = step;
+	if (dy < -step) dy = -step;
+	drawX += dx;
+	drawY += dy;
+}
 
 void drawPlayer(RenderWindow& window, int prow, int pcol, int dir)
 {
-	float cx = pcol * TILE + TILE / 2;
-	float cy = prow * TILE + TILE / 2;
+	static int counter = 0;
+	bool moveNow = false;
+	counter++;
+	if (counter >= 2)
+	{
+		counter = 0;
+		moveNow = true;
+	}
+	slideToward(catDrawX, catDrawY, (int)(pcol * TILE + TILE / 2), (int)(prow * TILE + HUD_H + TILE / 2), moveNow, SLIDE_STEP);
+	float cx = (float)catDrawX;
+	float cy = (float)catDrawY;
+
 	const float R = 9.f;
 
 	// body
@@ -106,34 +146,132 @@ void drawPlayer(RenderWindow& window, int prow, int pcol, int dir)
 
 }
 
+void drawCherry(RenderWindow& window, float cx, float cy)
+{
+	// stems: two thin rectangles that meet at the top
+	RectangleShape stem({ 9.5f, 1.5f });
+	stem.setFillColor(Color(60, 140, 40));
+	stem.setOrigin({ 0.f, 0.75f });
+	stem.setPosition({ cx - 4.f, cy + 0.f });
+	stem.setRotation(degrees(-58.f));
+	window.draw(stem);
+	stem.setPosition({ cx + 4.5f, cy + 1.f });
+	stem.setRotation(degrees(-111.f));
+	window.draw(stem);
+
+	// leaf at the top where the stems meet
+	CircleShape leaf(3.5f, 3);
+	leaf.setFillColor(Color(70, 190, 60));
+	leaf.setOrigin({ 3.5f, 3.5f });
+	leaf.setPosition({ cx + 4.f, cy - 8.f });
+	leaf.setRotation(degrees(70.f));
+	window.draw(leaf);
+
+	// two red cherries with a small white shine
+	CircleShape cherry(4.5f);
+	cherry.setFillColor(Color(220, 20, 40));
+	cherry.setOrigin({ 4.5f, 4.5f });
+	CircleShape shine(1.2f);
+	shine.setFillColor(Color::White);
+	shine.setOrigin({ 1.2f, 1.2f });
+
+	cherry.setPosition({ cx - 4.5f, cy + 4.f });
+	window.draw(cherry);
+	shine.setPosition({ cx - 6.f, cy + 2.5f });
+	window.draw(shine);
+
+	cherry.setPosition({ cx + 4.5f, cy + 5.f });
+	window.draw(cherry);
+	shine.setPosition({ cx + 3.f, cy + 3.5f });
+	window.draw(shine);
+}
+
 void drawPellets(RenderWindow& window, char maze[ROWS][COLS])
 {
+	// The logic eats a pellet the moment the player arrives on its cell, but the cat is drawn
+	// sliding a little behind. So an eaten pellet stays drawn until the cat visually reaches it.
+	static char previous[ROWS][COLS];        // the maze as it was last frame
+	static int lingerRow = -1, lingerCol = -1;
+	static char lingerChar = '-';
+	static int lingerFrames = 0;
+
 	CircleShape pellet(2.5);
 	pellet.setFillColor(Color::White);
-	CircleShape powerPellet(8.f);
-	powerPellet.setFillColor(Color::White);
 	for (int r = 0; r < ROWS; r++)
 	{
 		for (int c = 0; c < COLS; c++)
 		{
+			if ((previous[r][c] == '.' || previous[r][c] == 'o') && maze[r][c] == '-')
+			{
+				lingerRow = r;               // this pellet was just eaten
+				lingerCol = c;
+				lingerChar = previous[r][c];
+				lingerFrames = 0;
+			}
+			previous[r][c] = maze[r][c];
+
+			float cx = c * TILE + TILE / 2;
+			float cy = r * TILE + HUD_H + TILE / 2;
 			if (maze[r][c] == '.')
 			{
-				pellet.setPosition({ c * TILE + TILE / 2 - 2.5f, r * TILE + TILE / 2 - 2.5f });
+				pellet.setPosition({ cx - 2.5f, cy - 2.5f });
 				window.draw(pellet);
 			}
 			else if (maze[r][c] == 'o')
 			{
-				powerPellet.setPosition({ c * TILE + TILE / 2 - 8.f, r * TILE + TILE / 2 - 8.f });
-				window.draw(powerPellet);
+				drawCherry(window, cx, cy);
 			}
+		}
+	}
+
+	if (lingerRow >= 0)
+	{
+		float cx = lingerCol * TILE + TILE / 2;
+		float cy = lingerRow * TILE + HUD_H + TILE / 2;
+		float gapX = cx - catDrawX;          // how far the drawn cat still is from that cell
+		float gapY = cy - catDrawY;
+		lingerFrames++;
+		if (lingerFrames > 12 || (gapX < 8 && gapX > -8 && gapY < 8 && gapY > -8))
+			lingerRow = -1;                  // the cat got there (or it took too long, e.g. a respawn)
+		else if (lingerChar == 'o')
+			drawCherry(window, cx, cy);
+		else
+		{
+			pellet.setPosition({ cx - 2.5f, cy - 2.5f });
+			window.draw(pellet);
 		}
 	}
 }
 
-// facing uses your ghost direction: 0 up, 1 left, 2 down, 3 right (-1 = none)
-
-void drawGhost(RenderWindow& window, float cx, float cy, Color color, bool scared, int facing)
+void drawGhost(RenderWindow& window, float targetCx, float targetCy, Color color, bool scared, int facing)
 {
+	// Visual smoothing only. drawMaze draws the ghosts in order 0..3 every frame,
+	// so a call counter tells us which ghost this call is.
+	static int drawX[NUM_GHOSTS], drawY[NUM_GHOSTS];   // where each ghost is drawn
+	static int whichGhost = 0;
+	static int counter = 0;
+	static bool moveNow = false;
+
+	int i = whichGhost;
+	whichGhost = (whichGhost + 1) % NUM_GHOSTS;
+	if (i == 0)                          // first ghost of a new frame
+	{
+		counter++;
+		moveNow = false;
+		if (counter >= 2)
+		{
+			counter = 0;
+			moveNow = true;
+		}
+	}
+	// frightened ghosts step every 16 frames instead of 10, so they slide at half the speed
+	int step = SLIDE_STEP;
+	if (ghostBlue[i])
+		step = SLIDE_STEP / 2;
+	slideToward(drawX[i], drawY[i], (int)targetCx, (int)targetCy, moveNow, step);
+	float cx = (float)drawX[i];
+	float cy = (float)drawY[i];
+
 	Color bodyColor = scared ? Color(100, 100, 255) : color;
 
 	// head (top half is round), body block, and three feet along the bottom
@@ -199,5 +337,26 @@ void drawGhost(RenderWindow& window, float cx, float cy, Color color, bool scare
 			seg.setPosition({ cx - 6.f + k * 3.f, cy + 3.f + (k % 2) * 2.f });
 			window.draw(seg);
 		}
+	}
+}
+
+// HUD strip at the top: score on the left, one yellow circle per life on the right
+void drawHUD(RenderWindow& window, const Font& font, int score, int lives)
+{
+	RectangleShape strip({ 570.f, HUD_H });
+	strip.setFillColor(Color(10, 10, 30));
+	window.draw(strip);
+
+	Text scoreText(font, "Score: " + to_string(score), 24);
+	scoreText.setFillColor(Color::White);
+	scoreText.setPosition({ 15.f, 10.f });
+	window.draw(scoreText);
+
+	CircleShape life(10.f);
+	life.setFillColor(Color::Yellow);
+	for (int i = 0; i < lives; i++)
+	{
+		life.setPosition({ 570.f - 40.f - i * 28.f, 15.f });
+		window.draw(life);
 	}
 }

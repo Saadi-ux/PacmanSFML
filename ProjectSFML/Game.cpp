@@ -4,6 +4,7 @@
 
 using namespace std;
 
+const float HUD_H = 50.f;
 const int ROWS = 40;
 const int COLS = 40;
 int rows, cols;
@@ -25,7 +26,7 @@ void saveGame(char maze[ROWS][COLS])
 		file1 << endl;
 	}
 
-	file.close();
+	file1.close();
 }
 void findPlayer(int& prow, int& pcol, char maze[ROWS][COLS])
 {
