@@ -1,62 +1,68 @@
-#include <cstdlib>
-using namespace std;
-
+//NIGGER WITH A HARD R BITCH
 const int ROWS = 40;
 const int COLS = 40;
-const int NUM_GHOSTS = 4;
 
-const int NO_DIR = -1;
-const int NORM_SPD = 10;
-const int BLUE_SPD = 16;
-const int BLUE_TIME = 5 * 60;
-const int GHOST_PTS = 200;
-
-// up, left, down, right
 const int dr[4] = { -1, 0, 1, 0 };
 const int dc[4] = { 0, -1, 0, 1 };
 
-extern int ghostRow[NUM_GHOSTS];
-extern int ghostCol[NUM_GHOSTS];
-extern int ghostDir[NUM_GHOSTS];
-extern int ghostStartRow[NUM_GHOSTS];
-extern int ghostStartCol[NUM_GHOSTS];
+extern int ghostRow[4];
+extern int ghostCol[4];
+extern int ghostDir[4];
+extern int ghostStartRow[4];
+extern int ghostStartCol[4];
 
 bool isWall(char maze[ROWS][COLS], int r, int c);
 
-bool ghostBlue[NUM_GHOSTS];
-int ghostTick[NUM_GHOSTS];
+bool ghostBlue[4];
+int ghostTick[4];
 int blueLeft = 0;
 int lastPower = -1;
+int seed = 12345;
+
+int absValue(int x)
+{
+	if (x < 0)
+		x = -x;
+	return x;
+}
+
+int randomNumber(int max)
+{
+	seed = (seed * 75) % 65537;
+	return seed % max;
+}
 
 int countPower(char maze[ROWS][COLS])
 {
-	int n = 0;
+	int count = 0;
 	for (int r = 0; r < ROWS; r++)
 		for (int c = 0; c < COLS; c++)
 			if (maze[r][c] == 'o')
-				n++;
-	return n;
+				count++;
+	return count;
 }
 
 bool isChaser(int i)
 {
-	return i == 0 || i == 2;
+	if (i == 0 || i == 2)
+		return true;
+	return false;
 }
 
 void sendHome(int i)
 {
 	ghostRow[i] = ghostStartRow[i];
 	ghostCol[i] = ghostStartCol[i];
-	ghostDir[i] = NO_DIR;
+	ghostDir[i] = -1;
 	ghostBlue[i] = false;
 	ghostTick[i] = 0;
 }
 
 void initGhostState()
 {
-	for (int i = 0; i < NUM_GHOSTS; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		ghostDir[i] = NO_DIR;
+		ghostDir[i] = -1;
 		ghostBlue[i] = false;
 		ghostTick[i] = 0;
 	}
@@ -66,7 +72,7 @@ void initGhostState()
 
 void resetAll()
 {
-	for (int i = 0; i < NUM_GHOSTS; i++)
+	for (int i = 0; i < 4; i++)
 		if (ghostStartRow[i] >= 0)
 			sendHome(i);
 	blueLeft = 0;
@@ -74,13 +80,12 @@ void resetAll()
 
 void frightenGhosts()
 {
-	for (int i = 0; i < NUM_GHOSTS; i++)
+	for (int i = 0; i < 4; i++)
 		if (ghostRow[i] >= 0)
 			ghostBlue[i] = true;
-	blueLeft = BLUE_TIME;
+	blueLeft = 300;
 }
 
-// true while the ghost is frightened (does not flash, unlike showBlue)
 bool isBlue(int i)
 {
 	return ghostBlue[i];
@@ -88,70 +93,80 @@ bool isBlue(int i)
 
 bool showBlue(int i)
 {
-	if (!ghostBlue[i]) return false;
-	if (blueLeft > 120) return true;
-
-	// last 2 seconds: flip between blue and normal every 10 framesa
-	return (blueLeft / 10) % 2 == 1;
+	if (ghostBlue[i] == false)
+		return false;
+	if (blueLeft > 120)
+		return true;
+	if ((blueLeft / 10) % 2 == 1)
+		return true;
+	return false;
 }
 
-int pickDir(int i, char maze[ROWS][COLS], int pr, int pc)
+int pickDir(int i, char maze[ROWS][COLS], int prow, int pcol)
 {
-	int opts[4];
-	int n = 0;
-
+	int options[4];
+	int count = 0;
 	int back = -1;
-	if (ghostDir[i] != NO_DIR)
+	if (ghostDir[i] != -1)
 		back = (ghostDir[i] + 2) % 4;
 
-	// open cells, not counting the way it came from
+	if ((ghostCol[i] == 0 && ghostDir[i] == 1) || (ghostCol[i] == 18 && ghostDir[i] == 3))
+	{
+		if (isWall(maze, ghostRow[i] + dr[back], ghostCol[i] + dc[back]) != true)
+			return back;
+		return -1;
+	}
+
 	for (int d = 0; d < 4; d++)
 	{
-		if (d == back) continue;
-		if (!isWall(maze, ghostRow[i] + dr[d], ghostCol[i] + dc[d]))
-			opts[n++] = d;
-	}
-
-	// dead end, only choice is to turn around
-	if (n == 0)
-	{
-		if (back != -1 && !isWall(maze, ghostRow[i] + dr[back], ghostCol[i] + dc[back]))
-			return back;
-		return NO_DIR;
-	}
-
-	if (isChaser(i) && !ghostBlue[i])
-	{
-		int best = opts[0];
-		int bestDist = 9999;
-
-		// opts is already in up, left, down, right order so ties keep the first one
-		for (int k = 0; k < n; k++)
+		if (d != back)
 		{
-			int d = opts[k];
-			int dist = abs(ghostRow[i] + dr[d] - pr) + abs(ghostCol[i] + dc[d] - pc);
-			if (dist < bestDist)
+			if (isWall(maze, ghostRow[i] + dr[d], ghostCol[i] + dc[d]) != true)
 			{
-				bestDist = dist;
-				best = d;
+				options[count] = d;
+				count++;
 			}
 		}
-		return best;
 	}
 
-	return opts[rand() % n];
+	if (count == 0)
+	{
+		if (back != -1)
+		{
+			if (isWall(maze, ghostRow[i] + dr[back], ghostCol[i] + dc[back]) != true)
+				return back;
+		}
+		return -1;
+	}
+
+	if (isChaser(i) == true && ghostBlue[i] == false)
+	{
+		int bestDir = options[0];
+		int bestDistance = 9999;
+		for (int k = 0; k < count; k++)
+		{
+			int d = options[k];
+			int distance = absValue(ghostRow[i] + dr[d] - prow) + absValue(ghostCol[i] + dc[d] - pcol);
+			if (distance < bestDistance)
+			{
+				bestDistance = distance;
+				bestDir = d;
+			}
+		}
+		return bestDir;
+	}
+
+	return options[randomNumber(count)];
 }
 
-// returns true if the player lost a life
 bool hit(int i, int& score, int& lives)
 {
-	if (ghostBlue[i])
+	if (ghostBlue[i] == true)
 	{
-		score += GHOST_PTS;
+		score = score + 200;
 		sendHome(i);
 		return false;
 	}
-
 	lives--;
 	resetAll();
 	return true;
@@ -163,50 +178,60 @@ bool updateGhosts(char maze[ROWS][COLS], int pr, int pc, int oldPr, int oldPc, i
 	{
 		blueLeft--;
 		if (blueLeft == 0)
-			for (int i = 0; i < NUM_GHOSTS; i++)
+			for (int i = 0; i < 4; i++)
 				ghostBlue[i] = false;
 	}
 
-	// one less power pellet on the map than last frame = the player ate it
 	int power = countPower(maze);
 	if (lastPower != -1 && power < lastPower)
 		frightenGhosts();
 	lastPower = power;
 
-	// player walked into a ghost
-	for (int i = 0; i < NUM_GHOSTS; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		if (ghostRow[i] < 0) continue;
-		if (ghostRow[i] == pr && ghostCol[i] == pc)
-			if (hit(i, score, lives))
+		if (ghostRow[i] >= 0 && ghostRow[i] == pr && ghostCol[i] == pc)
+		{
+			if (hit(i, score, lives) == true)
 				return true;
+		}
 	}
 
-	for (int i = 0; i < NUM_GHOSTS; i++)
+	for (int i = 0; i < 4; i++)
 	{
-		if (ghostRow[i] < 0) continue;
+		if (ghostRow[i] < 0)
+			continue;
 
 		ghostTick[i]++;
-		int spd = ghostBlue[i] ? BLUE_SPD : NORM_SPD;
-		if (ghostTick[i] < spd) continue;
+		int speed = 10;
+		if (ghostBlue[i] == true)
+			speed = 16;
+		if (ghostTick[i] < speed)
+			continue;
 		ghostTick[i] = 0;
 
 		int d = pickDir(i, maze, pr, pc);
-		if (d == NO_DIR) continue;
+		if (d == -1)
+			continue;
 
-		int fromR = ghostRow[i];
-		int fromC = ghostCol[i];
+		int fromRow = ghostRow[i];
+		int fromCol = ghostCol[i];
 		ghostDir[i] = d;
-		ghostRow[i] += dr[d];
-		ghostCol[i] += dc[d];
+		ghostRow[i] = ghostRow[i] + dr[d];
+		ghostCol[i] = ghostCol[i] + dc[d];
 
-		// same cell, or they swapped places
-		bool same = (ghostRow[i] == pr && ghostCol[i] == pc);
-		bool swap = (fromR == pr && fromC == pc && ghostRow[i] == oldPr && ghostCol[i] == oldPc);
+		bool sameCell = false;
+		if (ghostRow[i] == pr && ghostCol[i] == pc)
+			sameCell = true;
 
-		if (same || swap)
-			if (hit(i, score, lives))
+		bool swapped = false;
+		if (fromRow == pr && fromCol == pc && ghostRow[i] == oldPr && ghostCol[i] == oldPc)
+			swapped = true;
+
+		if (sameCell == true || swapped == true)
+		{
+			if (hit(i, score, lives) == true)
 				return true;
+		}
 	}
 
 	return false;
