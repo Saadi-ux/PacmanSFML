@@ -80,6 +80,12 @@ void frightenGhosts()
 	blueLeft = BLUE_TIME;
 }
 
+// true while the ghost is frightened (does not flash, unlike showBlue)
+bool isBlue(int i)
+{
+	return ghostBlue[i];
+}
+
 bool showBlue(int i)
 {
 	if (!ghostBlue[i]) return false;

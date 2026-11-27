@@ -10,6 +10,7 @@ const float TILE = 30.f;
 const int NUM_GHOSTS = 4;
 const float HUD_H = 50.f;
 bool showBlue(int i);
+bool isBlue(int i);
 
 int Px;
 int Py;
@@ -20,7 +21,7 @@ int ghostStartRow[NUM_GHOSTS];
 int ghostStartCol[NUM_GHOSTS];
 
 void findPlayer(int& prow, int& pcol, char maze[ROWS][COLS]);
-void drawGhost(RenderWindow& window, float cx, float cy, Color color, bool scared, int facing);
+void drawGhost(RenderWindow& window, int i, float cx, float cy, Color color, bool scared, bool blue, int facing);
 
 bool loadMaze(const char* filename, char maze[ROWS][COLS])
 {
@@ -93,7 +94,7 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROW
 		if (ghostRow[i] < 0) continue;
 		float gx = ghostCol[i] * TILE + TILE / 2;
 		float gy = ghostRow[i] * TILE + HUD_H + TILE / 2;
-		drawGhost(window, gx, gy, ghostColors[i], showBlue(i), ghostDir[i]);
+		drawGhost(window, i, gx, gy, ghostColors[i], showBlue(i), isBlue(i), ghostDir[i]);
 	}
 
 	drawPlayer(window, prow, pcol, dir);

@@ -11,10 +11,11 @@ const int COLS = 40;
 const float TILE = 30.f;
 const float HUD_H = 50.f;          // height of the HUD strip at the top
 const int NUM_GHOSTS = 4;
-extern bool ghostBlue[NUM_GHOSTS];   // defined in Ghost.cpp: true while a ghost is frightened
 
 int catDrawX = 0, catDrawY = 0;      // where the cat is drawn right now (set in drawPlayer)
-const int SLIDE_STEP = 8;          // pixels the drawn picture moves every 2 frames
+const int NORM_SPD = 10;           // same values as in Ghost.cpp
+const int BLUE_SPD = 16;
+const int SLIDE_STEP = 4;          // pixels the cat moves every frame (the cat steps every 8 frames, 4 x 8 covers a tile)
 
 bool isWall(char maze[ROWS][COLS], int r, int c)
 {
@@ -59,7 +60,7 @@ void drawWalls(RenderWindow& window, char maze[ROWS][COLS])
 
 // Visual smoothing only: the game logic still moves whole cells.
 // Moves the drawn position (in pixels) toward the target, at most "step" pixels per call.
-// moveNow is true on every 2nd frame. A target that is far away (first frame,
+// moveNow says whether to move on this call. A target that is far away (first frame,
 // respawn, ghost sent home) is jumped to instead of slid to.
 void slideToward(int& drawX, int& drawY, int targetX, int targetY, bool moveNow, int step)
 {
@@ -83,15 +84,7 @@ void slideToward(int& drawX, int& drawY, int targetX, int targetY, bool moveNow,
 
 void drawPlayer(RenderWindow& window, int prow, int pcol, int dir)
 {
-	static int counter = 0;
-	bool moveNow = false;
-	counter++;
-	if (counter >= 2)
-	{
-		counter = 0;
-		moveNow = true;
-	}
-	slideToward(catDrawX, catDrawY, (int)(pcol * TILE + TILE / 2), (int)(prow * TILE + HUD_H + TILE / 2), moveNow, SLIDE_STEP);
+	slideToward(catDrawX, catDrawY, (int)(pcol * TILE + TILE / 2), (int)(prow * TILE + HUD_H + TILE / 2), true, SLIDE_STEP);
 	float cx = (float)catDrawX;
 	float cy = (float)catDrawY;
 
@@ -243,38 +236,39 @@ void drawPellets(RenderWindow& window, char maze[ROWS][COLS])
 	}
 }
 
-void drawGhost(RenderWindow& window, float targetCx, float targetCy, Color color, bool scared, int facing)
+void drawGhost(RenderWindow& window, int i, float targetCx, float targetCy, Color color, bool scared, bool blue, int facing)
 {
-	// Visual smoothing only. drawMaze draws the ghosts in order 0..3 every frame,
-	// so a call counter tells us which ghost this call is.
-	static int drawX[NUM_GHOSTS], drawY[NUM_GHOSTS];   // where each ghost is drawn
-	static int whichGhost = 0;
-	static int counter = 0;
-	static bool moveNow = false;
+	// Visual smoothing only: slide a little every frame, one tile per logic step.
+	static float drawX[NUM_GHOSTS], drawY[NUM_GHOSTS];
 
-	int i = whichGhost;
-	whichGhost = (whichGhost + 1) % NUM_GHOSTS;
-	if (i == 0)                          // first ghost of a new frame
+	float step = TILE / NORM_SPD;
+	if (blue)                                // really frightened, even while flashing
+		step = TILE / BLUE_SPD;
+
+	float dx = targetCx - drawX[i];
+	float dy = targetCy - drawY[i];
+	if (fabs(dx) > 45 || fabs(dy) > 45)      // first frame, respawn, sent home: jump
 	{
-		counter++;
-		moveNow = false;
-		if (counter >= 2)
-		{
-			counter = 0;
-			moveNow = true;
-		}
+		drawX[i] = targetCx;
+		drawY[i] = targetCy;
 	}
-	// frightened ghosts step every 16 frames instead of 10, so they slide at half the speed
-	int step = SLIDE_STEP;
-	if (ghostBlue[i])
-		step = SLIDE_STEP / 2;
-	slideToward(drawX[i], drawY[i], (int)targetCx, (int)targetCy, moveNow, step);
-	float cx = (float)drawX[i];
-	float cy = (float)drawY[i];
+	else
+	{
+		if (dx > step) dx = step;
+		if (dx < -step) dx = -step;
+		if (dy > step) dy = step;
+		if (dy < -step) dy = -step;
+		drawX[i] += dx;
+		drawY[i] += dy;
+	}
+	float cx = drawX[i];
+	float cy = drawY[i];
 
-	Color bodyColor = scared ? Color(100, 100, 255) : color;
+	Color bodyColor = color;
+	if (scared)
+		bodyColor = Color(100, 100, 255);
 
-	// head (top half is round), body block, and three feet along the bottom
+	// head, body block and three feet
 	CircleShape head(10.f);
 	head.setFillColor(bodyColor);
 	head.setOrigin({ 10.f, 10.f });
@@ -295,41 +289,41 @@ void drawGhost(RenderWindow& window, float targetCx, float targetCy, Color color
 		window.draw(foot);
 	}
 
-	if (!scared)
+	// eyes (pupils look the way the ghost moves) or frightened dots
+	CircleShape eye(3.f);
+	eye.setFillColor(Color::White);
+	eye.setOrigin({ 3.f, 3.f });
+	CircleShape pupil(1.6f);
+	pupil.setFillColor(Color(33, 33, 222));
+	pupil.setOrigin({ 1.6f, 1.6f });
+
+	float ox = 0.f, oy = 0.f;
+	if (facing == 0) oy = -1.5f;
+	else if (facing == 1) ox = -1.5f;
+	else if (facing == 2) oy = 1.5f;
+	else if (facing == 3) ox = 1.5f;
+
+	for (int s = -1; s <= 1; s += 2)
 	{
-		// white eyes with blue pupils that look the way the ghost is moving
-		float ox = 0.f, oy = 0.f;
-		if (facing == 0) oy = -1.5f;
-		else if (facing == 1) ox = -1.5f;
-		else if (facing == 2) oy = 1.5f;
-		else if (facing == 3) ox = 1.5f;
-
-		CircleShape eye(3.f);
-		eye.setFillColor(Color::White);
-		eye.setOrigin({ 3.f, 3.f });
-		CircleShape pupil(1.6f);
-		pupil.setFillColor(Color(33, 33, 222));
-		pupil.setOrigin({ 1.6f, 1.6f });
-
-		for (int s = -1; s <= 1; s += 2)
+		if (!scared)
 		{
 			eye.setPosition({ cx + s * 4.f, cy - 3.f });
 			window.draw(eye);
 			pupil.setPosition({ cx + s * 4.f + ox, cy - 3.f + oy });
 			window.draw(pupil);
 		}
+		else
+		{
+			eye.setRadius(1.5f);
+			eye.setOrigin({ 1.5f, 1.5f });
+			eye.setPosition({ cx + s * 3.5f, cy - 3.f });
+			window.draw(eye);
+		}
 	}
-	else
-	{
-		// frightened face: two small dots and a zigzag mouth
-		CircleShape dot(1.5f);
-		dot.setFillColor(Color::White);
-		dot.setOrigin({ 1.5f, 1.5f });
-		dot.setPosition({ cx - 3.5f, cy - 3.f });
-		window.draw(dot);
-		dot.setPosition({ cx + 3.5f, cy - 3.f });
-		window.draw(dot);
 
+	// frightened zigzag mouth
+	if (scared)
+	{
 		RectangleShape seg({ 3.f, 1.5f });
 		seg.setFillColor(Color::White);
 		for (int k = 0; k < 4; k++)
