@@ -13,9 +13,18 @@ const float HUD_H = 50.f;          // height of the HUD strip at the top
 const int NUM_GHOSTS = 4;
 
 int catDrawX = 0, catDrawY = 0;      // where the cat is drawn right now (set in drawPlayer)
+float ghostDrawX[NUM_GHOSTS] = {};
+float ghostDrawY[NUM_GHOSTS] = {};
 const int NORM_SPD = 10;           // same values as in Ghost.cpp
 const int BLUE_SPD = 16;
 const int SLIDE_STEP = 4;          // pixels the cat moves every frame (the cat steps every 8 frames, 4 x 8 covers a tile)
+
+bool isSpriteHit(int i, float hitRadius = 16.f)
+{
+	float dx = ghostDrawX[i] - (float)catDrawX;
+	float dy = ghostDrawY[i] - (float)catDrawY;
+	return (dx * dx + dy * dy) <= (hitRadius * hitRadius);
+}
 
 bool isWall(char maze[ROWS][COLS], int r, int c)
 {
@@ -136,7 +145,6 @@ void drawPlayer(RenderWindow& window, int prow, int pcol, int dir)
 	window.draw(ear);
 	inner.setPosition({ cx + 6.5f, cy - 10.5f }); inner.setRotation(degrees(15.f));
 	window.draw(inner);
-
 }
 
 void drawCherry(RenderWindow& window, float cx, float cy)
@@ -179,14 +187,28 @@ void drawCherry(RenderWindow& window, float cx, float cy)
 	window.draw(shine);
 }
 
+// File-level (not static inside drawPellets) so syncDrawState() can reset them for a new game
+static char previous[ROWS][COLS];        // the maze as it was last frame
+static int lingerRow = -1, lingerCol = -1;
+static char lingerChar = '-';
+static int lingerFrames = 0;
+
+// Call right after a new or loaded game is set up, so the drawing code forgets the previous game
+void syncDrawState(char maze[ROWS][COLS])
+{
+	for (int r = 0; r < ROWS; r++)
+		for (int c = 0; c < COLS; c++)
+			previous[r][c] = maze[r][c];
+	lingerRow = -1;
+	lingerFrames = 0;
+	catDrawX = 0;        // far from the cat, so the next draw jumps straight to it
+	catDrawY = 0;
+}
+
 void drawPellets(RenderWindow& window, char maze[ROWS][COLS])
 {
 	// The logic eats a pellet the moment the player arrives on its cell, but the cat is drawn
 	// sliding a little behind. So an eaten pellet stays drawn until the cat visually reaches it.
-	static char previous[ROWS][COLS];        // the maze as it was last frame
-	static int lingerRow = -1, lingerCol = -1;
-	static char lingerChar = '-';
-	static int lingerFrames = 0;
 
 	CircleShape pellet(2.5);
 	pellet.setFillColor(Color::White);
@@ -263,6 +285,8 @@ void drawGhost(RenderWindow& window, int i, float targetCx, float targetCy, Colo
 	}
 	float cx = drawX[i];
 	float cy = drawY[i];
+	ghostDrawX[i] = cx;
+	ghostDrawY[i] = cy;
 
 	Color bodyColor = color;
 	if (scared)
@@ -353,4 +377,114 @@ void drawHUD(RenderWindow& window, const Font& font, int score, int lives)
 		life.setPosition({ 570.f - 40.f - i * 28.f, 15.f });
 		window.draw(life);
 	}
+}
+
+// Full-window overlay for "YOU WIN" / "GAME OVER"
+void drawEndScreen(RenderWindow& window, const Font& font, bool won, int score)
+{
+	RectangleShape shade({ 570.f, 680.f });
+	shade.setFillColor(Color(0, 0, 0, 180));
+	window.draw(shade);
+
+	Text title(font, won ? "YOU WIN" : "GAME OVER", 56);
+	title.setFillColor(won ? Color::Yellow : Color::Red);
+	FloatRect b = title.getLocalBounds();
+	title.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	title.setPosition({ 285.f, 300.f });
+	window.draw(title);
+
+	Text info(font, "Final score: " + to_string(score), 28);
+	info.setFillColor(Color::White);
+	b = info.getLocalBounds();
+	info.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	info.setPosition({ 285.f, 370.f });
+	window.draw(info);
+
+	Text hint(font, "Press Enter to return to the menu", 18);
+	hint.setFillColor(Color(180, 180, 180));
+	b = hint.getLocalBounds();
+	hint.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	hint.setPosition({ 285.f, 420.f });
+	window.draw(hint);
+}
+
+// Big 3 / 2 / 1 in the middle of the maze before the game starts
+void drawCountdown(RenderWindow& window, const Font& font, int number)
+{
+	if (number < 1) number = 1;
+
+	// dim everything drawn so far (raise the 100 for darker, lower it for lighter)
+	RectangleShape dim({ 570.f, 680.f });
+	dim.setFillColor(Color(0, 0, 0, 100));
+	window.draw(dim);
+
+	Text t(font, to_string(number), 110);
+	t.setFillColor(Color::Yellow);
+	t.setOutlineColor(Color::Black);
+	t.setOutlineThickness(5.f);
+	FloatRect b = t.getLocalBounds();
+	t.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	t.setPosition({ 285.f, HUD_H + 21 * TILE / 2.f });
+	window.draw(t);
+}
+
+// Main menu: New Game, Continue, Exit. Continue is greyed out when there is no saved game.
+void drawMenu(RenderWindow& window, const Font& font, int choice, bool saveExists, bool showNoSave)
+{
+	Text title(font, "PAC-MAN", 64);
+	title.setFillColor(Color::Yellow);
+	FloatRect b = title.getLocalBounds();
+	title.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	title.setPosition({ 285.f, 170.f });
+	window.draw(title);
+
+	const string items[3] = { "New Game", "Continue", "Exit" };
+	for (int i = 0; i < 3; i++)
+	{
+		Color col = Color::White;
+		if (i == 1 && !saveExists)
+			col = Color(90, 90, 90);
+		else if (i == choice)
+			col = Color::Yellow;
+
+		Text item(font, items[i], 36);
+		item.setFillColor(col);
+		b = item.getLocalBounds();
+		item.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+		item.setPosition({ 285.f, 320.f + i * 60.f });
+		window.draw(item);
+
+		if (i == choice)
+		{
+			CircleShape marker(9.f);
+			marker.setFillColor(Color::Yellow);
+			marker.setOrigin({ 9.f, 9.f });
+			marker.setPosition({ 160.f, 320.f + i * 60.f });
+			window.draw(marker);
+		}
+	}
+
+	if (showNoSave)
+	{
+		Text msg(font, "No saved game", 24);
+		msg.setFillColor(Color::Red);
+		b = msg.getLocalBounds();
+		msg.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+		msg.setPosition({ 285.f, 500.f });
+		window.draw(msg);
+	}
+
+	Text hint(font, "W/S or Up/Down: choose     Enter: select", 18);
+	hint.setFillColor(Color(180, 180, 180));
+	b = hint.getLocalBounds();
+	hint.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	hint.setPosition({ 285.f, 560.f });
+	window.draw(hint);
+
+	Text hint2(font, "Esc during the game: save and return here", 18);
+	hint2.setFillColor(Color(180, 180, 180));
+	b = hint2.getLocalBounds();
+	hint2.setOrigin({ b.position.x + b.size.x / 2.f, b.position.y + b.size.y / 2.f });
+	hint2.setPosition({ 285.f, 590.f });
+	window.draw(hint2);
 }
