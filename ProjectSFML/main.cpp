@@ -20,7 +20,7 @@ extern int Px;
 extern int Py;
 
 bool loadMaze(const char* filename, char maze[ROWS][COLS]);
-void drawMaze(RenderWindow& window, int& prow, int& pcol, char maze[ROWS][COLS]);
+void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROWS][COLS]);
 void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS]);
 void movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS]);
 void saveGame();
@@ -38,7 +38,7 @@ int main()
 	initGhostState();
 
 	RenderWindow window(VideoMode({ 570, 680 }), "Pac-Man");
-	window.setFramerateLimit(50);
+	window.setFramerateLimit(60);
 
 	int startRow = -1, startCol = -1;
 
@@ -52,7 +52,7 @@ int main()
 
 		window.clear(Color::Black);
 
-		drawMaze(window, prow, pcol, maze);
+		drawMaze(window, prow, pcol, dir, maze);
 
 		if (startRow < 0)
 		{

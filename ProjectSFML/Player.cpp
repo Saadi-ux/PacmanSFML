@@ -21,25 +21,21 @@ void movePlayer(int dir,int& prow,int& pcol,char maze[ROWS][COLS])
 	{
 		maze[prow][pcol] = '-';
 		prow--;
-		maze[prow][pcol] = 'P';
 	}
 	if (dir == 2 && isWall(maze, prow + 1, pcol)!=true)
 	{
 		maze[prow][pcol] = '-';
 		prow++;
-		maze[prow][pcol] = 'P';
 	}
 	if (dir == 3 && isWall(maze, prow, pcol - 1)!=true)
 	{
 		maze[prow][pcol] = '-';
 		pcol--;
-		maze[prow][pcol] = 'P';
 	}
 	if (dir == 4 && isWall(maze, prow, pcol + 1)!=true)
 	{
 		maze[prow][pcol] = '-';
 		pcol++;
-		maze[prow][pcol] = 'P';
 	}
 
 }
