@@ -16,11 +16,17 @@ const float HUD_H = 50.f;
 // The game is always in exactly one of these states
 const int MENU = 0;
 const int PLAYING = 1;
+// Sound ids (same order as soundFiles in Sound.cpp)
+const int SND_CHOMP = 0, SND_POWER = 1, SND_GHOST = 2, SND_DEATH = 3, SND_BEEP = 4;
+const int SND_GO = 5, SND_MENU = 6, SND_WIN = 7, SND_GAMEOVER = 8;
+
+const int COUNTDOWN = 3;      // the 3-2-1 before play starts
 const int GAME_OVER = 2;      // shared by "GAME OVER" and "YOU WIN" (see the 'won' flag)
 
 int gameState = MENU;
 int menuChoice = 0;           // 0 = New Game, 1 = Continue, 2 = Exit
 bool won = false;
+int countFrames = 0;         // frames spent in COUNTDOWN (60 per number)
 bool noSaveMsg = false;      // shows "No saved game" on the menu
 
 char maze[ROWS][COLS];
@@ -47,6 +53,9 @@ void deleteSave();
 void syncDrawState(char maze[ROWS][COLS]);
 void drawHUD(RenderWindow& window, const Font& font, int score, int lives);
 void drawEndScreen(RenderWindow& window, const Font& font, bool won, int score);
+void loadSounds();
+void playSound(int id);
+void drawCountdown(RenderWindow& window, const Font& font, int number);
 void drawMenu(RenderWindow& window, const Font& font, int choice, bool saveExists, bool showNoSave);
 
 // Counts the normal pellets ('.') and the power pellets ('o') left in the maze
@@ -109,25 +118,33 @@ void handleKey(RenderWindow& window, Keyboard::Key key)
 		{
 			menuChoice = (menuChoice + 2) % 3;
 			noSaveMsg = false;
+			playSound(SND_MENU);
 		}
 		else if (key == Keyboard::Key::Down || key == Keyboard::Key::S)
 		{
 			menuChoice = (menuChoice + 1) % 3;
 			noSaveMsg = false;
+			playSound(SND_MENU);
 		}
 		else if (key == Keyboard::Key::Enter)
 		{
 			if (menuChoice == 0)
 			{
 				if (startNewGame())
-					gameState = PLAYING;
+				{
+					countFrames = 0;
+					gameState = COUNTDOWN;
+				}
 				else
 					window.close();           // maze.txt is missing
 			}
 			else if (menuChoice == 1)
 			{
 				if (hasSave() && continueGame())
-					gameState = PLAYING;
+				{
+					countFrames = 0;
+					gameState = COUNTDOWN;
+				}
 				else
 					noSaveMsg = true;         // stay on the menu
 			}
@@ -175,12 +192,19 @@ void update()
 		int dotsAfter, powerAfter;
 		countPellets(maze, dotsAfter, powerAfter);
 		score += (dotsBefore - dotsAfter) * 10 + (powerBefore - powerAfter) * 50;
+		int scoreBeforeGhosts = score;
+
+		if (powerBefore > powerAfter)
+			playSound(SND_POWER);
+		else if (dotsBefore > dotsAfter)
+			playSound(SND_CHOMP);
 
 		if (dotsAfter + powerAfter == 0)
 		{
 			won = true;                   // all pellets eaten
 			gameState = GAME_OVER;
 			deleteSave();
+			playSound(SND_WIN);
 		}
 		else if (updateGhosts(maze, prow, pcol, oldRow, oldCol, score, lives))
 		{
@@ -195,10 +219,26 @@ void update()
 				won = false;              // out of lives
 				gameState = GAME_OVER;
 				deleteSave();
+				playSound(SND_GAMEOVER);
 			}
+			else
+				playSound(SND_DEATH);
 		}
+		else if (score > scoreBeforeGhosts)
+			playSound(SND_GHOST);         // the cat ate a frightened ghost
 		break;
 	}
+
+	case COUNTDOWN:
+		if (countFrames % 60 == 0)
+			playSound(SND_BEEP);          // one beep per number
+		countFrames++;
+		if (countFrames >= 180)           // 3 numbers x 60 frames
+		{
+			playSound(SND_GO);
+			gameState = PLAYING;
+		}
+		break;
 
 	case GAME_OVER:
 		break;
@@ -219,6 +259,12 @@ void draw(RenderWindow& window, const Font& font)
 	case PLAYING:
 		drawMaze(window, prow, pcol, dir, maze);
 		drawHUD(window, font, score, lives);
+		break;
+
+	case COUNTDOWN:
+		drawMaze(window, prow, pcol, dir, maze);
+		drawHUD(window, font, score, lives);
+		drawCountdown(window, font, 3 - countFrames / 60);
 		break;
 
 	case GAME_OVER:
@@ -243,6 +289,8 @@ int main()
 		cout << "Could not load a font (put arial.ttf next to maze.txt)" << endl;
 		return 1;
 	}
+
+	loadSounds();
 
 	while (window.isOpen())
 	{
