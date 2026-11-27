@@ -10,7 +10,7 @@ const float TILE = 30.f;
 const int NUM_GHOSTS = 4;
 const float HUD_H = 50.f;
 bool showBlue(int i);
-bool isBlue(int i);
+extern bool ghostBlue[NUM_GHOSTS];
 
 int Px;
 int Py;
@@ -94,7 +94,7 @@ void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROW
 		if (ghostRow[i] < 0) continue;
 		float gx = ghostCol[i] * TILE + TILE / 2;
 		float gy = ghostRow[i] * TILE + HUD_H + TILE / 2;
-		drawGhost(window, i, gx, gy, ghostColors[i], showBlue(i), isBlue(i), ghostDir[i]);
+		drawGhost(window, i, gx, gy, ghostColors[i], showBlue(i), ghostBlue[i], ghostDir[i]);
 	}
 
 	drawPlayer(window, prow, pcol, dir);
