@@ -1,4 +1,3 @@
-//NIGGER WITH A HARD R BITCH
 const int ROWS = 40;
 const int COLS = 40;
 
