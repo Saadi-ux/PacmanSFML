@@ -8,57 +8,53 @@ const int COLS = 40;
 const int FrameTime = 8;
 int CTime = 1;
 bool isWall(char maze[ROWS][COLS], int r, int c);
-void movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS])
+// Moves the player one tile. Returns the points for the pellet eaten: 10 = dot, 50 = power pellet, 0 = nothing
+int movePlayer(int dir, int& prow, int& pcol, char maze[ROWS][COLS])
 {
 	if (CTime != FrameTime) {
 		CTime++;
-		return;
+		return 0;
 	}
 	CTime = 1;
 	if (dir == 0)
-		return;
+		return 0;
 	if (dir == 1 && isWall(maze, prow - 1, pcol) != true)
-	{
-		maze[prow][pcol] = '-';
 		prow--;
-	}
+
 	if (dir == 2 && isWall(maze, prow + 1, pcol) != true)
-	{
-		maze[prow][pcol] = '-';
 		prow++;
-	}
+
 	if (dir == 3)
 	{
 		if (pcol == 0)
-		{
-
-			maze[prow][pcol] = '-';
 			pcol = 18;
 
-		}
 		else if (isWall(maze, prow, pcol - 1) != true)
-		{
-			maze[prow][pcol] = '-';
 			pcol--;
-		}
+
 	}
 	if (dir == 4)
 	{
 		if (pcol == 18)
 		{
 			if (isWall(maze, prow, pcol + 1) != true)
-			{
-				maze[prow][pcol] = '-';
 				pcol = 0;
-			}
 		}
 		else if (isWall(maze, prow, pcol + 1) != true)
 		{
-			maze[prow][pcol] = '-';
 			pcol++;
 		}
 	}
-	maze[prow][pcol] = '-';
+
+	// What is on the tile we ended up on?
+	int points = 0;
+	if (maze[prow][pcol] == '.')
+		points = 10;
+	else if (maze[prow][pcol] == 'o')
+		points = 50;
+
+	maze[prow][pcol] = '-';       // the pellet is eaten
+	return points;
 }
 
 void readInput(int& dir, int prow, int pcol, char maze[ROWS][COLS])

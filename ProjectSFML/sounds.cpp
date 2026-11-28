@@ -32,4 +32,5 @@ void playSound(int id)
 		return;
 	sounds[id]->stop();
 	sounds[id]->play();
+
 }

@@ -95,6 +95,7 @@ void findPlayer(int& prow, int& pcol, char maze[ROWS][COLS])
 			{
 				prow = r;
 				pcol = c;
+				maze[r][c] = '-';
 				return;
 			}
 		}

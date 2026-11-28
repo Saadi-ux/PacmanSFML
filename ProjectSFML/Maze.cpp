@@ -75,12 +75,12 @@ void initGhosts(char maze[ROWS][COLS])
 	}
 }
 
-
 void drawMaze(RenderWindow& window, int& prow, int& pcol, int dir, char maze[ROWS][COLS])
 {
 	drawWalls(window, maze);
 	drawPellets(window, maze);
 	findPlayer(prow, pcol, maze);
+
 
 	const Color ghostColors[NUM_GHOSTS] = {
 		Color::Red,
